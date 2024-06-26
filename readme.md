@@ -1,1 +1,0 @@
-Load cell data (XLSX).
