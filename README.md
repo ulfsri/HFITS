@@ -1,22 +1,7 @@
-# HFITS: Heat Flux Measurements using Infrared Thermography and a Plate Sensor
+# HFITS: An Analysis Tool for Calculating Heat Flux to Planar Surfaces using Infrared Thermography
 
-Please follow these steps to install required packages:
+Developed by research engineers at the [Fire Safety Research Institute](https://fsri.org/), part of [UL Research Institutes](https://ul.org/), HFITS is a software tool that is intended to support experimental measurements of heat flux over planar surfaces using infrared thermography. This technique enables spatially and temporally resolved heat flux measurements at a greater resolution than arrays of traditional point sensors. The target audience is researchers and engineers in thermal engineering disciplines. 
 
-1. Install Anaconda from `https://www.anaconda.com/`.
-2. Once installed, open terminal and type `pip install opencv-python`.
-3. In terminal, type `pip install ffmpeg-python`.
-4. Download the repository and copy-paste all raw csv files into the `IHT_Working_Folder/T_raw`.
-5. Run `image_rectify_crop.py`.
-6. Select Source directory: `IHT_Working_Folder/T_raw`
-7. Select Destination directory: `IHT_Working_Folder/T_processed`
-8. Select CSV file: Select one of the raw images to identify the four corners of the computational domain:
-   a. First select the four corners of the surface by clicking on the appropriate spots.
-   b. Select some additional points on the edges to identify the new (destination corners).
-   c. Hit `Enter`.
-   d. Examine the plotted image. If satisfied, press `ESC` to process all the CSV files inside the folder (or reset the process).
-9. Run `GUI_IHT.py`.
-10. Adjust the default values shown in the opened window.
-11. Select the `Source Folder`: "T_Processed"
-12. Select the `Destination Folder`: "Incident Radiation"
-13. Select the `Apply Inverse Model to Files`: This will apply the IHT on all the files
-14. Select `Create Video`: This will export an mp4 of the image sequence to the destination folder.
+HFITS consists of two main components: pre-processing of infrared thermograms (obtained from heat transfer experiments), and inverse heat transfer analysis (to deduce heat flux over the planar surface in those experiments). The software offers comprehensive functionalities, including support for custom thermogram formats, metadata handling, a graphical interface for selection of regions of interest, the ability to import additional temperature measurements to enhance convective heat transfer estimates, and the exporting of both computed field data and contour videos. Please refer to the software [MANUAL](https://github.com/ulfsri/HFITS/blob/main/MANUAL.pdf) for additional information.
+
+This software has been made available to the community under the GPL-3.0 license. It is under active development, and users are encouraged to contact the software developers with questions and feature requests.
