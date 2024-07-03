@@ -1,0 +1,7 @@
+# Editor directories and files
+.vscode/*
+.venv/*
+.DS_Store
+
+# Logs
+*.log
