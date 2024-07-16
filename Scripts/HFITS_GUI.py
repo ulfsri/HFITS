@@ -2,12 +2,6 @@ import sys
 import os
 import tkinter as tk
 from tkinter import ttk
-
-module_path = '/Users/parham.dehghani/Documents/GitHubl/infrared_tools/Scripts/'
-if module_path not in sys.path:
-    sys.path.append(module_path)
-
-# Now we can import modules
 from Image_processing import IPA
 from IHT import setup_second_tab
 

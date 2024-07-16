@@ -20,10 +20,7 @@ from tkinter import *
 
 DEFAULTS = {
     "initial temperature": 283.15,
-    #"steel conductivity": 45,
     "surface emissivity": 0.94,
-    #"steel density": 8050,
-    #"steel specific heat (cp)": 490,
     "wall thickness": 0.000795,
     "surface width": 0.9144,
     "surface height": 1.5204,
@@ -49,7 +46,6 @@ def k_metal(T_g):
     metal = global_state["wall material"].get()
     # from engineeringtoolbox.com
     if metal == 'steel (FSRI)':
-        # k_metal = 8.1119 * np.log(T_g) - 30.377
         k_metal = (-3.38759644163437 * 10**(-6) * T_g**2) + 0.017732749 + 13.6405477360128
     elif metal == 'steel (Engineering Toolbox)':
         k_metal = 8.1119 * np.log(T_g) - 30.377
@@ -66,7 +62,6 @@ def cp_metal(T_g):
     global global_state
     metal = global_state["wall material"].get()
     if metal == 'steel (FSRI)':
-        # cp_metal = 0.1414 * np.log(T_g) - 0.3534
         cp_metal = (-1.24093738317144*10**(-7)) * T_g**2 + 0.000288489 * T_g + 0.467198515635077
     elif metal == 'steel (Engineering Toolbox)':
         cp_metal = 0.1414 * np.log(T_g) - 0.3534
@@ -212,7 +207,7 @@ def select_DAQ_excel():
     
 def T0_intrp():
     DAQ_path = global_state['DAQ_path']
-    file = pd.read_excel(DAQ_path , header = 0).iloc[:,20].dropna()
+    file = pd.read_excel(DAQ_path , header = 0)['T0'].dropna()
     file += 273.15
     T0_data = savgol_filter(np.squeeze(np.array(file)), window_length=21, polyorder=2, axis=0)
     return T0_data
@@ -232,9 +227,9 @@ def Tfilm_interp(width , height , nt):
     nx , ny = temp_data.shape[0] , temp_data.shape[1]
     del temp_data
 
-    xy = pd.read_excel(DAQ_path , header = 0).iloc[:,16:18].dropna()
+    xy = pd.read_excel(DAQ_path , header = 0)[['x','y']].dropna()
     points = np.array(list(zip(xy['x'],xy['y'])))
-    file = pd.read_excel(DAQ_path , header = 0).iloc[:2*int(nt)-1:2,:16]
+    file = pd.read_excel(DAQ_path , header = 0).iloc[:,:len(list(points))]
     file += 273.15
     
     grid_z = []
@@ -589,10 +584,6 @@ def create_video(source_folder, dest_folder, source_file_type, dest_file_type,gl
 
     final_video_path = os.path.join(dest_folder, 'contour_video.mp4')
 
-    # ffmpeg with full verbose: (TODO - make this a user option)
-    # concat_command = ["ffmpeg", "-f", "concat", "-safe", "0", "-i", file_list_path, "-c", "copy", final_video_path]
-    
-    # ffmpeg with logs disabled: (TODO - make this a user option)
     concat_command = ["ffmpeg", "-f", "concat", "-safe", "0", "-i", file_list_path, "-c", "copy", final_video_path, "-loglevel", "quiet"]
     
     subprocess.run(concat_command, check=True)
