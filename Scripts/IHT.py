@@ -44,7 +44,6 @@ def k_gas(T_g):
 def k_metal(T_g):
     global global_state
     metal = global_state["wall material"].get()
-    # from engineeringtoolbox.com
     if metal == 'steel (FSRI)':
         k_metal = (-3.38759644163437 * 10**(-6) * T_g**2) + 0.017732749 + 13.6405477360128
     elif metal == 'steel (Engineering Toolbox)':
@@ -54,11 +53,11 @@ def k_metal(T_g):
     elif metal == 'copper':
         k_metal = -47.15 * np.log(T_g) + 674.98
     else:
-        print('Error: Metal is not in the list.')
+        print('Selected material is invalid, default values assumed.')
+        k_metal = 45
     return k_metal
 
 def cp_metal(T_g):
-    # from engineeringtoolbox.com
     global global_state
     metal = global_state["wall material"].get()
     if metal == 'steel (FSRI)':
@@ -70,11 +69,11 @@ def cp_metal(T_g):
     elif metal == 'copper':
         cp_metal = 0.0779 * np.log(T_g) - 0.0712
     else:
-        print('Error: Metal is not in the list.')
+        print('Selected material is invalid, default values assumed.')
+        cp_metal = 490
     return 1000*cp_metal
 
 def rho_metal(T_g):
-    # from engineeringtoolbox.com
     global global_state
     metal = global_state["wall material"].get()
     if metal == 'steel (FSRI)':
@@ -86,7 +85,8 @@ def rho_metal(T_g):
     elif metal == 'copper':
         rho_metal = -0.5124*np.log(T_g) + 9075.6
     else:
-        print('Error: Metal is not in the list.')
+        print('Selected material is invalid, default values assumed.')
+        rho_metal = 8050
     return rho_metal
 
 def Grashof(dT_w, T_film, T_amb):
@@ -102,7 +102,6 @@ def calculate_gradients(T_values_2d, i, j, element_width, element_height, use_hi
     grad_T = np.zeros(2)  # [grad_T_x, grad_T_y]
 
     if use_higher_order:
-        # Higher order discretization using numpy's gradient
         grad_y, grad_x = np.gradient(T_values_2d, axis=(0, 1))
         grad_T[0] = grad_y[i, j] * element_height / element_width
         grad_T[1] = grad_x[i, j] * element_width / element_height
@@ -121,9 +120,9 @@ def inverse_heat_transfer(time_series_data, element_width, element_height, time_
 
     if global_state["temperature_unit_var"].get() == "Celsius":
         time_series_data += 273.15
-        print('Temperature unit is set to Kelvin')
+        print('Temperature unit will be converted from Celsius to Kelvin.')
     else:
-        print('Temperature unit was already set to Kelvin')
+        print('Temperature unit was set to Kelvin, no conversion needed.')
     rows, cols, num_time_steps = time_series_data.shape
     estimated_flux = np.zeros(time_series_data.shape)
     hfc = np.zeros(time_series_data.shape)
@@ -243,7 +242,7 @@ def Tfilm_interp(width , height , nt):
         grid_z.append(griddata(points, values, (grid_x, grid_y), method='nearest'))
     # Check the shape to confirm it matches the custom resolution
     output = np.stack(grid_z , axis = 2)
-    print("Interpolated film temperature grid shape:", output.shape, output)
+    print("Interpolated film temperature grid shape: ", output.shape, output)
     return(output)
     
 def check_h5py_files(folder):
@@ -379,7 +378,7 @@ def process_directory_and_plot(source_dir, dest_dir, element_width, element_heig
         h5py_Tf.close()
         h5py_T0.close()
 
-    print("All files are processed and saved in the destination folder.")  
+    print("All files have been processed and saved in the destination folder.")  
 
 def apply_inverse_model():
     global global_state, DEFAULTS
@@ -514,7 +513,7 @@ def load_data_frames(folder, file_type, file_name = "", batch_start=None, batch_
                 selected_files = files[batch_start:batch_end]
             else:
                 selected_files = files
-            return [pd.read_csv(file, header=None) for file in tqdm(selected_files, desc = "Loading dataframes for video generation ")]
+            return [pd.read_csv(file, header=None) for file in tqdm(selected_files, desc = "Loading dataframes for video generation: ")]
 
 def create_video(source_folder, dest_folder, source_file_type, dest_file_type,global_max_source, global_max_dest, Time_Step_Size_s, batch_size):
     # Determine the total number of frames based on file type and content
@@ -523,7 +522,7 @@ def create_video(source_folder, dest_folder, source_file_type, dest_file_type,gl
         if source_h5py_path:
             with h5py.File(source_h5py_path, 'r') as h5_file:
                 total_frames = len(h5_file.keys())
-                print(f"Total frames : {total_frames}")
+                print(f"Total frames: {total_frames}")
 
     else:
         total_frames = max(len(glob.glob(os.path.join(source_folder, '*.csv'))),

@@ -3,28 +3,29 @@ import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 
 # Constants
-stefan_boltzmann_constant = 5.67e-8
-initial_temperature = 293 # make sure it is in kelvins
-k_steel = 45  # Thermal conductivity of steel in W/mK
+stefan_boltzmann_constant = 5.67e-8 # (W/m^2K^4)
+initial_temperature = 293 # Initial temperature of the plate sensor (K)
 
 # User-defined variables
-emission_time = 20 * 60  # 1 minute in seconds
-wall_thickness = 0.001
-element_width = 0.05
-element_height = 0.10
-emissivity = 0.94
-steel_density = 8050 
-cp_steel = 490
-convective_hfc_exposed = 10
-convective_hfc_unexposed = 8
-#Initializing grid heat flux for the forward  model
+emission_time = 20 * 60  # Exposure time (s)
+wall_thickness = 0.001 # Thickness of the plate sensor (m)
+element_width = 0.05 # Size of a discrete element in the x dimension (m)
+element_height = 0.10 # Size of a discrete element in the y dimension (m)
+emissivity = 0.94 # Emissivity of the plate sensor
+steel_density = 8050 # Density of the plate sensor material (kg/m^3)
+cp_steel = 490 # Specific heat capacity of the plate sensor material (J/kgK)
+k_steel = 45  # Thermal conductivity of the plate sensor material (W/mK)
+convective_hfc_exposed = 10 # Convective heat transfer coefficient on the exposed side of the plate sensor (W/m^2K)
+convective_hfc_unexposed = 8 # Convective heat transfer coefficient on the unexposed side of the plate sensor (W/m^2K)
+
+# Initializing grid heat flux for the forward model
 grid_size = 3  # 3x3 grid --> the simplest 2D case possible
 central_heat_flux = 50000  # Central cell
-surrounding_heat_flux = 10000  # neighboring  cells
+surrounding_heat_flux = 10000  # neighboring cells
 heat_flux_grid = np.full((grid_size, grid_size), surrounding_heat_flux)
 heat_flux_grid[1, 1] = central_heat_flux  # Set central cell heat flux
 
-# energy blance for the 2D grid
+# Apply conservation of energy over the 2D grid
 def energy_balance_2d(t, T_flat):
     T = T_flat.reshape((grid_size, grid_size))
     dTdt = np.zeros_like(T)
@@ -47,7 +48,7 @@ def energy_balance_2d(t, T_flat):
             q_conv_exp = convective_hfc_exposed * area * (T[i, j] - initial_temperature)
             q_conv_unexp = convective_hfc_unexposed * area * (T[i, j] - initial_temperature)
             q_rad = 2*emissivity * stefan_boltzmann_constant * area * (T[i, j]**4 - initial_temperature**4)
-            print(q_cond)
+            # print(q_cond)
             # Energy balance
             dTdt[i, j] = (emissivity * q_in - q_conv_exp - q_conv_unexp - q_rad + q_cond) / (area * cp_steel * steel_density * wall_thickness)
 
@@ -61,14 +62,15 @@ t_span = (0, emission_time)
 
 # Generate time steps
 t_eval = np.linspace(t_span[0], t_span[1],6000)  # Creates an array from 0 to emission_time with a specified time step
-print(t_eval)
+# print(t_eval)
+
 # Solve the 2D differential equation with specified time steps
 solution = solve_ivp(energy_balance_2d, t_span, T0_flat, method='RK45', t_eval=t_eval, dense_output=True)
-
 num_time_steps = len(solution.t)
-print((solution.y).shape)
+# print((solution.y).shape)
 T_values_2d = solution.y.reshape((grid_size, grid_size, num_time_steps))
-print(T_values_2d.shape)
+# print(T_values_2d.shape)
+
 # Plotting temperature distribution over time
 fig , ((ax1, ax2, ax3), (ax4, ax5, ax6), (ax7, ax8, ax9)) = plt.subplots(nrows=3, ncols=3, figsize=(14, 8) )
 axes = [ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9]
@@ -90,7 +92,7 @@ plt.tight_layout()
 # IHT Model Function
 def inverse_heat_transfer(T_values_2d, solution, k_steel, cp_steel, steel_density, element_width, element_height, wall_thickness, convective_hfc_exposed, convective_hfc_unexposed, emissivity):
     num_time_steps = T_values_2d.shape[2]
-    print(num_time_steps)
+    # print(num_time_steps)
     estimated_flux = np.zeros((grid_size, grid_size, num_time_steps))
     
     temp_grad = np.gradient(T_values_2d, axis=2) / np.gradient(solution.t)
@@ -112,7 +114,6 @@ def inverse_heat_transfer(T_values_2d, solution, k_steel, cp_steel, steel_densit
                 q_cond =  np.sum(grad_T) * wall_thickness
                 q_conv = (convective_hfc_exposed + convective_hfc_unexposed) * area * (T_values_2d[i, j, time_step] - initial_temperature)
                 q_rad = 2*emissivity * stefan_boltzmann_constant * area * (T_values_2d[i, j, time_step]**4 - initial_temperature**4)
-                
                 q_storage = cp_steel * steel_density * area * wall_thickness * temp_grad[i, j, time_step]
 
                 # Calculate the estimated incident heat flux
@@ -145,6 +146,6 @@ for i in range(grid_size):
         axx.legend(loc='upper right')
         # ax.grid(True)
         k += 1
-print(T_values_2d[1, 1, :])
+# print(T_values_2d[1, 1, :])
 plt.tight_layout()
 plt.show()
