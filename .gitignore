@@ -5,3 +5,5 @@
 
 # Logs
 *.log
+#MAC DS STORE
+.DS_Store
