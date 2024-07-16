@@ -6,3 +6,4 @@
 # Logs
 *.log
 
+.DS_Store
