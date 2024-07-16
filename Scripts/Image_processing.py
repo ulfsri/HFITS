@@ -247,15 +247,15 @@ class IPA:
 
     def select_source_folder(self):
         self.source_folder = filedialog.askdirectory()
-        print("Selected Source Folder:", self.source_folder)
+        print("Selected Source Folder: ", self.source_folder)
 
     def select_dest_folder(self):
         self.dest_folder = filedialog.askdirectory()
-        print("Selected Destination Folder:", self.dest_folder)
+        print("Selected Destination Folder: ", self.dest_folder)
 
     def select_Folder_for_Time_Array(self):
         self.Time_Array_folder = filedialog.askdirectory()
-        print("Selected Time Array Folder:", self.Time_Array_folder)
+        print("Selected Time Array Folder: ", self.Time_Array_folder)
 
     def assemble_time_array(self):
         time_row = 3
@@ -291,7 +291,7 @@ class IPA:
 
     def select_csv_file(self):
         self.csv_file = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
-        print("Selected sample CSV File:", self.csv_file)
+        print("Selected sample CSV File: ", self.csv_file)
 
     def process_images(self):
         if self.source_folder and self.dest_folder and self.csv_file:
