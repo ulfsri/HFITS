@@ -19,7 +19,7 @@ import gc
 from tkinter import *
 
 DEFAULTS = {
-    "initial temperature": 283.15,
+    "initial temperature": 286.15,
     "surface emissivity": 0.94,
     "wall thickness": 0.000795,
     "surface width": 0.9144,
@@ -242,7 +242,7 @@ def Tfilm_interp(width , height , nt):
         grid_z.append(griddata(points, values, (grid_x, grid_y), method='nearest'))
     # Check the shape to confirm it matches the custom resolution
     output = np.stack(grid_z , axis = 2)
-    print("Interpolated film temperature grid shape: ", output.shape, output)
+    print("Interpolated film temperature grid shape:", output.shape)
     return(output)
     
 def check_h5py_files(folder):
@@ -416,18 +416,6 @@ def apply_inverse_model():
     element_height = surface_height_m / temperature_file.shape[0]
 
     process_directory_and_plot(source_folder, dest_folder, element_width, element_height,  global_state["convection_method_var"].get())
-
-def round_up_to_next_fifth(number):
-    """Round up a number to the next multiple of 5."""
-    return math.ceil(number / 5) * 5
-
-def round_up_to_next_tenth(number):
-    """Round up a number to the next multiple of 10."""
-    return math.ceil(number / 10) * 10
-
-def get_batches(keys, batch_size):
-    for i in range(0, len(keys), batch_size):
-        yield keys[i:i + batch_size]
 
 def export_pngs(root, batch_size):
     global global_state
