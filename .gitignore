@@ -4,5 +4,8 @@
 *.DS_Store
 .DS_Store
 
+# Media
+*.mp4
+
 # Logs
 *.log
