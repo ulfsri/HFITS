@@ -6,6 +6,7 @@ import os
 import glob
 import matplotlib.pyplot as plt
 from matplotlib import animation
+from matplotlib.ticker import FuncFormatter
 from scipy.ndimage import median_filter
 from tqdm import tqdm
 from fdm import FDM
@@ -17,6 +18,10 @@ import sys
 import subprocess
 import gc
 from tkinter import *
+# from skimage.restoration import denoise_tv_chambolle            
+from scipy.ndimage import gaussian_filter
+
+
 
 DEFAULTS = {
     "initial temperature": 286.15,
@@ -91,11 +96,13 @@ def rho_metal(T_g):
 
 def Grashof(dT_w, T_film, T_amb):
     L = 1
-    return 9.81*(1/(T_film))*dT_w*L**3 /(nu_gas(T_film - 273.15)**2)
+    # print(11111,dT_w , nu_gas(T_film - 273.15), T_film)
+    return 9.81*(1/(T_film))*abs(dT_w)*L**3 /(nu_gas(T_film - 273.15))**2
 
 def natural_conv_correlation(Gr):
     Pr = 0.701
-    return ((0.825 + (0.387*(Gr*Pr)**(1/6))/(1+(0.492/Pr)**(9/16))**(8/27))**2)
+    # print(111111,Gr , (0.825 + (0.387*(Gr*Pr)**(1/6))/(1+(0.492/Pr)**(9/16))**(8/27))**2)
+    return ((0.825 + (0.387*(abs(Gr)*Pr)**(1/6))/(1+(0.492/Pr)**(9/16))**(8/27))**2)
 
 def calculate_gradients(T_values_2d, i, j, element_width, element_height, use_higher_order=False):
     rows, cols = T_values_2d.shape
@@ -286,7 +293,7 @@ def process_directory_and_plot(source_dir, dest_dir, element_width, element_heig
     batch_files = int(global_state['constants']['batch_files'].get())
     global total_files
     total_files = len(file_paths)
-    window_length = int(15 / float(global_state["constants"]["time step size"].get())) # Savgol filter window length
+    window_length = int(5 / float(global_state["constants"]["time step size"].get())) # Savgol filter window length
 
     for batch_idx, batch_start in enumerate(range(0, total_files, batch_files)):
         batch_end = min(batch_start + batch_files, total_files)
@@ -301,8 +308,9 @@ def process_directory_and_plot(source_dir, dest_dir, element_width, element_heig
             elif input_file_type == "h5py":
                 temp_data = h5py_input_file[file_path][:]
             temp_data = temp_data.astype(np.float64)
-            temp_data = savgol_filter(temp_data, window_length=21, polyorder=2, axis=0)
-            temp_data = savgol_filter(temp_data, window_length=21, polyorder=2, axis=1)
+            # temp_data = denoise_tv_chambolle(temp_data, weight=0.2, eps=0.0002, max_num_iter=1000, channel_axis=None)
+            # temp_data = savgol_filter(temp_data, window_length=21, polyorder=2, axis=0)
+            # temp_data = savgol_filter(temp_data, window_length=21, polyorder=2, axis=1)
             time_series_data.append(temp_data)
 
         time_series_data = np.stack(time_series_data, axis=-1)
@@ -320,24 +328,35 @@ def process_directory_and_plot(source_dir, dest_dir, element_width, element_heig
                 elif input_file_type == "h5py":
                     additional_temp_data = h5py_input_file[file_path][:]
                 additional_temp_data = additional_temp_data.astype(np.float64)
-                additional_temp_data = savgol_filter(additional_temp_data, window_length=21, polyorder=2, axis=0)
-                additional_temp_data = savgol_filter(additional_temp_data, window_length=21, polyorder=2, axis=1)
+                # additional_temp_data = savgol_filter(additional_temp_data, window_length=11, polyorder=2, axis=0)
+                # additional_temp_data = savgol_filter(additional_temp_data, window_length=11, polyorder=2, axis=1)
                 additional_data.append(additional_temp_data)
 
             additional_data = np.stack(additional_data, axis=-1)
             combined_data = np.concatenate((additional_data, time_series_data), axis=2)
-            combined_data = savgol_filter(combined_data, window_length=window_length, polyorder=2, axis=2)
-            time_series_data = combined_data[:, :, -batch_files:]
+            # combined_data = savgol_filter(combined_data, window_length=window_length, polyorder=2, axis=2)
+            time_series_data = combined_data#[:, :, -batch_files:]
 
-        else:
-            time_series_data = savgol_filter(time_series_data, window_length=window_length, polyorder=2, axis=2)
-
+        # else:
+        #     time_series_data = savgol_filter(time_series_data, window_length=window_length, polyorder=2, axis=2)
+        # sigma_values = [0.2, 0.2, 0.4]
+        # Apply Gaussian Filter with different sigmas for each axis
+        # time_series_data = gaussian_filter(time_series_data, sigma=sigma_values)
         estimated_flux, hfc, Tf, T_inf = inverse_heat_transfer(time_series_data, element_width, element_height, time_step, convection_method)
 
-        # if DEFAULTS['output_smoothing']:
-        for k in tqdm(range(estimated_flux.shape[2]) , desc = 'Applying Median Filter: '):
-            estimated_flux[:, :, k] = median_filter(estimated_flux[:, :, k], size=45)
+        # estimated_flux, hfc, Tf, T_inf = inverse_heat_transfer(time_series_data, element_width, element_height, time_step, convection_method)
 
+        # if DEFAULTS['output_smoothing']:
+        # for k in tqdm(range(estimated_flux.shape[2]) , desc = 'Applying Median Filter: '):
+            # estimated_flux[:, :, k] = median_filter(estimated_flux[:, :, k], size=15)
+            # denoise_tv_chambolle(np.array(estimated_flux[:, :, k]), weight=0.6, eps=0.0002, max_num_iter=2000, channel_axis=None)
+
+            # Define different sigma values for each axis
+        # sigma_values = [0.1, 0.1, 4]
+        sigma_values = [7, 7, 15]
+
+        # Apply Gaussian Filter with different sigmas for each axis
+        estimated_flux = gaussian_filter(estimated_flux, sigma=sigma_values)
         # Export results for the current batch
         for i in tqdm(range(estimated_flux.shape[2]), desc='Exporting Results: '):
             # Updated line: Format the frame index with 6 digits padding
@@ -423,6 +442,13 @@ def export_pngs(root, batch_size):
     dest_folder = global_state["dest_folder"]
     source_file_type = global_state["source_file_type"].get()
     dest_file_type = global_state["dest_file_type"].get()
+    labels_x  = np.arange(0 , float(global_state["constants"]["surface width"].get()), 0.1)
+    labels_y = np.arange(0 , float(global_state["constants"]["surface height"].get()), 0.1)
+    labels_width , labels_height = [],[]
+    for xs in labels_x:
+        labels_width.append(np.round(xs,1))
+    for ys in labels_y:
+        labels_height.append(np.round(ys,1))
 
     # Determine the total number of frames based on file type and content
     if dest_file_type == "h5py":
@@ -442,7 +468,8 @@ def export_pngs(root, batch_size):
 
     # Initialize the progress bar for the total number of frames
     pbar = tqdm(total=total_frames, desc="Generating PNG frames")
-
+    # def format_func(value, tick_number):
+    #     return f'{value:.1f}'
     # Process each batch
     for batch_index in range(total_batches):
         batch_start = batch_index * batch_size
@@ -451,27 +478,45 @@ def export_pngs(root, batch_size):
         source_data_frames = load_data_frames(source_folder, source_file_type, "processed_temperature_array.h5", batch_start, batch_end)
         dest_data_frames = load_data_frames(dest_folder, dest_file_type, "Incident_Radiative_HF.h5", batch_start, batch_end)
 
-        source_levels = np.linspace(0, float(global_state["constants"]["maximum temperature"].get()), 100)
-        dest_levels = np.linspace(0, float(global_state["constants"]["maximum incident heat flux"].get()), 100)
-        fig, axs = plt.subplots(1, 2, figsize=(12, 6))
-        cnt1 = axs[0].contourf([[0, 0], [0, 0]], levels=source_levels, cmap='turbo')
-        cnt2 = axs[1].contourf([[0, 0], [0, 0]], levels=dest_levels, cmap='turbo')
-        fig.colorbar(cnt1, ax=axs[0])
-        fig.colorbar(cnt2, ax=axs[1])
-
+        source_levels = np.arange(0, float(global_state["constants"]["maximum temperature"].get()), 5)
+        dest_levels = np.arange(0, float(global_state["constants"]["maximum incident heat flux"].get()), .5)
+        fig, axs = plt.subplots(1, 2, figsize=(12, 7))
+        cnt1 = axs[0].contourf([[0, 0], [0, 0]], levels=source_levels, cmap='jet')
+        cnt2 = axs[1].contourf([[0, 0], [0, 0]], levels=dest_levels, cmap='jet')
+        cbar1 = fig.colorbar(cnt1, ax=axs[0] , ticks=np.arange(0, float(global_state["constants"]["maximum temperature"].get()), 20))
+        cbar2 = fig.colorbar(cnt2, ax=axs[1] , ticks=np.arange(0, float(global_state["constants"]["maximum incident heat flux"].get()), 5))
+        cbar1.set_label("Temperature (\u00B0C)", fontsize=16)
+        cbar2.set_label(r"$\mathrm{Incident~Radiative~Heat~Flux~(kW/m^2)}$", fontsize = 16)
+        cbar1.ax.tick_params(labelsize=14)
+        cbar2.ax.tick_params(labelsize=14)
+        
         for frame_index in range(batch_start, batch_end):
             # Clear the axes for the new frame
             axs[0].clear()
             axs[1].clear()
             if frame_index - batch_start < len(source_data_frames):
-                axs[0].contourf(source_data_frames[frame_index - batch_start], levels=source_levels, cmap='turbo')
+                axs[0].contourf(source_data_frames[frame_index - batch_start], levels=source_levels, cmap='jet')
             if frame_index - batch_start < len(dest_data_frames):
-                axs[1].contourf(dest_data_frames[frame_index - batch_start], levels=dest_levels, cmap='turbo')
+                axs[1].contourf(dest_data_frames[frame_index - batch_start], levels=dest_levels, cmap='jet')
             axs[0].set_title(f'Temperature {frame_index}')
             axs[1].set_title(f'Incident Radiative Heat Flux {frame_index}')
+            surface_width_m = float(global_state["constants"]["surface width"].get())
+
+
+            
+            xmin, xmax = axs[0].get_xlim()
+            ymin, ymax = axs[0].get_ylim()
+            axs[0].set_xticks(np.linspace(xmin,xmax,labels_x.shape[0]) , labels_width, rotation='vertical')
+            axs[1].set_xticks(np.linspace(xmin,xmax,labels_x.shape[0]) , labels_width, rotation='vertical')
+            axs[0].set_yticks(np.linspace(ymin,ymax,labels_y.shape[0]), labels_height, rotation='horizontal')
+            axs[1].set_yticks(np.linspace(ymin,ymax,labels_y.shape[0]), labels_height, rotation='horizontal')
+            # axs[0].xaxis.set_major_formatter(FuncFormatter(format_func))
+            # axs[1].xaxis.set_major_formatter(FuncFormatter(format_func))
+            # axs[0].yaxis.set_major_formatter(FuncFormatter(format_func))
+            # axs[1].yaxis.set_major_formatter(FuncFormatter(format_func))
 
             plt.tight_layout()
-            fig.savefig(os.path.join(output_dir, f"batch_{batch_index}_frame_{frame_index:06d}.png"))
+            fig.savefig(os.path.join(output_dir, f"batch_{batch_index}_frame_{frame_index:06d}.svg") , dpi = 150, bbox_inches='tight')
             pbar.update(1)
 
         plt.close(fig)
