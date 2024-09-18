@@ -18,10 +18,7 @@ import sys
 import subprocess
 import gc
 from tkinter import *
-# from skimage.restoration import denoise_tv_chambolle            
 from scipy.ndimage import gaussian_filter
-
-
 
 DEFAULTS = {
     "initial temperature": 286.15,
@@ -96,12 +93,10 @@ def rho_metal(T_g):
 
 def Grashof(dT_w, T_film, T_amb):
     L = 1
-    # print(11111,dT_w , nu_gas(T_film - 273.15), T_film)
     return 9.81*(1/(T_film))*abs(dT_w)*L**3 /(nu_gas(T_film - 273.15))**2
 
 def natural_conv_correlation(Gr):
     Pr = 0.701
-    # print(111111,Gr , (0.825 + (0.387*(Gr*Pr)**(1/6))/(1+(0.492/Pr)**(9/16))**(8/27))**2)
     return ((0.825 + (0.387*(abs(Gr)*Pr)**(1/6))/(1+(0.492/Pr)**(9/16))**(8/27))**2)
 
 def calculate_gradients(T_values_2d, i, j, element_width, element_height, use_higher_order=False):
@@ -180,7 +175,7 @@ def inverse_heat_transfer(time_series_data, element_width, element_height, time_
                 hfc[i,j,k] = DEFAULTS['convective hc exposed']
 
                 q_conv = (DEFAULTS['convective hc exposed'] + DEFAULTS['convective hc unexposed'])  * (T - Tamb[k])
-                q_rad = 2 * DEFAULTS['surface emissivity'] * STEFAN_BOLTZMANN_CONSTANT  * (T**4 - Tamb[k]**4)
+                q_rad = 2 * DEFAULTS['surface emissivity'] * STEFAN_BOLTZMANN_CONSTANT  * (T**4 - 0.5*Tamb[k]**4)
                 q_storage = cp_metal(T) * rho_metal(T)  * DEFAULTS['wall thickness'] * temp_grad_time[i, j, k]
                 estimated_flux[i, j, k] = (q_storage + q_conv + q_rad - q_cond) / (1000 * DEFAULTS['surface emissivity'])
     return estimated_flux , hfc , T_film , Tamb
@@ -308,9 +303,6 @@ def process_directory_and_plot(source_dir, dest_dir, element_width, element_heig
             elif input_file_type == "h5py":
                 temp_data = h5py_input_file[file_path][:]
             temp_data = temp_data.astype(np.float64)
-            # temp_data = denoise_tv_chambolle(temp_data, weight=0.2, eps=0.0002, max_num_iter=1000, channel_axis=None)
-            # temp_data = savgol_filter(temp_data, window_length=21, polyorder=2, axis=0)
-            # temp_data = savgol_filter(temp_data, window_length=21, polyorder=2, axis=1)
             time_series_data.append(temp_data)
 
         time_series_data = np.stack(time_series_data, axis=-1)
@@ -328,31 +320,14 @@ def process_directory_and_plot(source_dir, dest_dir, element_width, element_heig
                 elif input_file_type == "h5py":
                     additional_temp_data = h5py_input_file[file_path][:]
                 additional_temp_data = additional_temp_data.astype(np.float64)
-                # additional_temp_data = savgol_filter(additional_temp_data, window_length=11, polyorder=2, axis=0)
-                # additional_temp_data = savgol_filter(additional_temp_data, window_length=11, polyorder=2, axis=1)
                 additional_data.append(additional_temp_data)
 
             additional_data = np.stack(additional_data, axis=-1)
             combined_data = np.concatenate((additional_data, time_series_data), axis=2)
-            # combined_data = savgol_filter(combined_data, window_length=window_length, polyorder=2, axis=2)
             time_series_data = combined_data#[:, :, -batch_files:]
 
-        # else:
-        #     time_series_data = savgol_filter(time_series_data, window_length=window_length, polyorder=2, axis=2)
-        # sigma_values = [0.2, 0.2, 0.4]
-        # Apply Gaussian Filter with different sigmas for each axis
-        # time_series_data = gaussian_filter(time_series_data, sigma=sigma_values)
         estimated_flux, hfc, Tf, T_inf = inverse_heat_transfer(time_series_data, element_width, element_height, time_step, convection_method)
 
-        # estimated_flux, hfc, Tf, T_inf = inverse_heat_transfer(time_series_data, element_width, element_height, time_step, convection_method)
-
-        # if DEFAULTS['output_smoothing']:
-        # for k in tqdm(range(estimated_flux.shape[2]) , desc = 'Applying Median Filter: '):
-            # estimated_flux[:, :, k] = median_filter(estimated_flux[:, :, k], size=15)
-            # denoise_tv_chambolle(np.array(estimated_flux[:, :, k]), weight=0.6, eps=0.0002, max_num_iter=2000, channel_axis=None)
-
-            # Define different sigma values for each axis
-        # sigma_values = [0.1, 0.1, 4]
         sigma_values = [7, 7, 15]
 
         # Apply Gaussian Filter with different sigmas for each axis
@@ -468,8 +443,6 @@ def export_pngs(root, batch_size):
 
     # Initialize the progress bar for the total number of frames
     pbar = tqdm(total=total_frames, desc="Generating PNG frames")
-    # def format_func(value, tick_number):
-    #     return f'{value:.1f}'
     # Process each batch
     for batch_index in range(total_batches):
         batch_start = batch_index * batch_size
@@ -502,25 +475,18 @@ def export_pngs(root, batch_size):
             axs[1].set_title(f'Incident Radiative Heat Flux {frame_index}')
             surface_width_m = float(global_state["constants"]["surface width"].get())
 
-
-            
             xmin, xmax = axs[0].get_xlim()
             ymin, ymax = axs[0].get_ylim()
             axs[0].set_xticks(np.linspace(xmin,xmax,labels_x.shape[0]) , labels_width, rotation='vertical')
             axs[1].set_xticks(np.linspace(xmin,xmax,labels_x.shape[0]) , labels_width, rotation='vertical')
             axs[0].set_yticks(np.linspace(ymin,ymax,labels_y.shape[0]), labels_height, rotation='horizontal')
             axs[1].set_yticks(np.linspace(ymin,ymax,labels_y.shape[0]), labels_height, rotation='horizontal')
-            # axs[0].xaxis.set_major_formatter(FuncFormatter(format_func))
-            # axs[1].xaxis.set_major_formatter(FuncFormatter(format_func))
-            # axs[0].yaxis.set_major_formatter(FuncFormatter(format_func))
-            # axs[1].yaxis.set_major_formatter(FuncFormatter(format_func))
 
             plt.tight_layout()
             fig.savefig(os.path.join(output_dir, f"batch_{batch_index}_frame_{frame_index:06d}.svg") , dpi = 150, bbox_inches='tight')
             pbar.update(1)
 
         plt.close(fig)
-        # Clear memory
         del source_data_frames, dest_data_frames
         gc.collect()
 
