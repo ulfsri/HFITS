@@ -21,6 +21,7 @@ from tkinter import *
 from scipy.ndimage import gaussian_filter
 
 DEFAULTS = {
+    "length scale": 1,
     "initial temperature": 286.15,
     "surface emissivity": 0.94,
     "wall thickness": 0.000795,
@@ -92,7 +93,7 @@ def rho_metal(T_g):
     return rho_metal
 
 def Grashof(dT_w, T_film, T_amb):
-    L = 1
+    L = DEFAULTS['length scale']
     return 9.81*(1/(T_film))*abs(dT_w)*L**3 /(nu_gas(T_film - 273.15))**2
 
 def natural_conv_correlation(Gr):
@@ -165,12 +166,12 @@ def inverse_heat_transfer(time_series_data, element_width, element_height, time_
                 if convection_method == 'natural convection correlation':
                     #### exposed side
                     Grashov = Grashof (T - Tamb[k] , T_film[i, j, k] , Tamb[k])
-                    DEFAULTS['convective hc exposed'] = natural_conv_correlation(Grashov) * k_gas((T + Tamb[k])/2)
+                    DEFAULTS['convective hc exposed'] = natural_conv_correlation(Grashov) * k_gas((T + Tamb[k])/2) / DEFAULTS['length scale']
                     #### unexposed side
                     Grashov = Grashof (T - DEFAULTS['initial temperature']  ,\
                                         (T + DEFAULTS['initial temperature'] )/2 ,\
                                                 DEFAULTS['initial temperature'] )
-                    DEFAULTS['convective hc unexposed'] = natural_conv_correlation(Grashov) * k_gas((T + DEFAULTS['initial temperature'])/2)
+                    DEFAULTS['convective hc unexposed'] = natural_conv_correlation(Grashov) * k_gas((T + DEFAULTS['initial temperature'])/2) /  DEFAULTS['length scale']
                 
                 hfc[i,j,k] = DEFAULTS['convective hc exposed']
 
@@ -737,7 +738,7 @@ def setup_second_tab(parent):
 
     canvas.create_window((0, 0), window=scrollable_frame,anchor="nw")
     canvas.configure(yscrollcommand=scrollbar.set, width=450, height=200)
-    units = ['(K)','','(m)','(m)','(m)','(W/m2-K)','(W/m2-K)','(K)','(kW/m2)','(s)','','']
+    units = ['(m)','(K)','','(m)','(m)','(m)','(W/m2-K)','(W/m2-K)','(K)','(kW/m2)','(s)','','']
     # row += 1
     unit_idx = 0
     for key, value in DEFAULTS.items():
