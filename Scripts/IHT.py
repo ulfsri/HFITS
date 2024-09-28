@@ -19,6 +19,7 @@ import subprocess
 import gc
 from tkinter import *
 from scipy.ndimage import gaussian_filter
+import ast
 
 DEFAULTS = {
     "length scale": 1,
@@ -336,10 +337,25 @@ def process_directory_and_plot(source_dir, dest_dir, element_width, element_heig
             time_series_data = combined_data#[:, :, -batch_files:]
 
         estimated_flux, hfc, Tf, T_inf = inverse_heat_transfer(time_series_data, element_width, element_height, time_step, convection_method)
-        sigma_values = [7, 7, 15]
 
-        # Apply Gaussian Filter with different sigmas for each axis
-        estimated_flux = gaussian_filter(estimated_flux, sigma=sigma_values)
+        # Gaussian filtering if enabled
+        if global_state['Heat_Flux_Gaussian_Smoothing'].get() == 1:
+            try:
+                kernel_value_str = global_state['G_kernel_matrix_value'].get()
+                gaussian_kernel = ast.literal_eval(kernel_value_str)
+                if isinstance(gaussian_kernel, list):
+                    input_rank = estimated_flux.ndim
+                    if len(gaussian_kernel) == input_rank:
+                        print(f"Using Gaussian Kernel: {gaussian_kernel}")
+                        estimated_flux = gaussian_filter(estimated_flux, sigma=gaussian_kernel)
+                    else:
+                        print(f"Error: Gaussian kernel length must match input's number of dimensions ({input_rank}).")
+                else:
+                    print("Error: Gaussian kernel must be a list, e.g., [7,7,15]")
+            except (ValueError, SyntaxError):
+                print("Error: Invalid Gaussian kernel value. Please enter a valid list, e.g., [7,7,15]")
+        else:
+            print("Gaussian smoothing is disabled.")
         # Export results for the current batch
         for i in tqdm(range(estimated_flux.shape[2]), desc='Exporting Results: '):
             # Updated line: Format the frame index with 6 digits padding
@@ -379,7 +395,6 @@ def process_directory_and_plot(source_dir, dest_dir, element_width, element_heig
         h5py_Ts.close()
         h5py_Tf.close()
         h5py_T0.close()
-
     print("All files have been processed and saved in the destination folder.")  
 
 def apply_inverse_model():
@@ -677,6 +692,14 @@ def setup_second_tab(parent):
             Tamb_array_button.config(state=tk.NORMAL)
         else:
             Tamb_array_button.config(state=tk.DISABLED)
+    def toggle_G_smoothing():
+        if global_state['Heat_Flux_Gaussian_Smoothing'].get() == 1:
+            G_kernel_entry.config(state=tk.NORMAL)
+            if not G_kernel_entry.get():
+                global_state['G_kernel_matrix_value'].set("[7,7,15]")
+        else:
+            G_kernel_entry.config(state=tk.DISABLED)
+            global_state['G_kernel_matrix_value'].set("")
 
     global_state['time_array_checkbox_var'] = tk.IntVar()
     Label(parent, text='Enable Time Array File').grid(row = row, column = 0, sticky = W, pady = 2)
@@ -706,6 +729,18 @@ def setup_second_tab(parent):
     Tamb_array_button = tk.Button(parent, text="Browse", command=select_DAQ_excel, state=tk.DISABLED)
     Tamb_array_button.grid(row=row, column=1, sticky=W, pady=2)
     toggle_Tamb_button_state()
+    row += 1
+    #######################################################
+    global_state['Heat_Flux_Gaussian_Smoothing'] = tk.IntVar()
+    Label(parent, text='Gaussian Kernel [x,y,t]').grid(row=row, column=0, sticky=W, pady=2)
+
+    G_smoothing = tk.Checkbutton(parent, text="", variable=global_state['Heat_Flux_Gaussian_Smoothing'], command=toggle_G_smoothing)
+    G_smoothing.grid(row=row, column=0, sticky=E, pady=2)
+
+    global_state['G_kernel_matrix_value'] = tk.StringVar()
+    G_kernel_entry = Entry(parent, textvariable=global_state['G_kernel_matrix_value'], state=tk.DISABLED)
+    G_kernel_entry.grid(row=row, column=1, sticky=W, pady=2)
+    toggle_G_smoothing()
     row += 1
     #######################################################
     Label(parent, text='Apply Inverse Model').grid(row = row, column = 0, sticky = W, pady = 2)
