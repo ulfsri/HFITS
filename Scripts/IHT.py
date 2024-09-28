@@ -336,17 +336,35 @@ def process_directory_and_plot(source_dir, dest_dir, element_width, element_heig
             combined_data = np.concatenate((additional_data, time_series_data), axis=2)
             time_series_data = combined_data#[:, :, -batch_files:]
 
+        if global_state['T_Gaussian_Smoothing'].get() == 1:
+            try:
+                kernel_value_str = global_state['G_kernel_matrix_value_T'].get()
+                T_gaussian_kernel = ast.literal_eval(kernel_value_str)
+                if isinstance(T_gaussian_kernel, list):
+                    input_rank = time_series_data.ndim
+                    if len(T_gaussian_kernel) == input_rank:
+                        print(f"Using Gaussian Kernel for Temperature: {T_gaussian_kernel}")
+                        time_series_data = gaussian_filter(time_series_data, sigma=T_gaussian_kernel)
+                    else:
+                        print(f"Error: Gaussian kernel length must match input's number of dimensions ({input_rank}).")
+                else:
+                    print("Error: Gaussian kernel must be a list, e.g., [7,7,15]")
+            except (ValueError, SyntaxError):
+                print("Error: Invalid Gaussian kernel value. Please enter a valid list, e.g., [7,7,15]")
+        else:
+            print("Temperature Gaussian smoothing is disabled.")
+
         estimated_flux, hfc, Tf, T_inf = inverse_heat_transfer(time_series_data, element_width, element_height, time_step, convection_method)
 
         # Gaussian filtering if enabled
         if global_state['Heat_Flux_Gaussian_Smoothing'].get() == 1:
             try:
-                kernel_value_str = global_state['G_kernel_matrix_value'].get()
+                kernel_value_str = global_state['G_kernel_matrix_value_hf'].get()
                 gaussian_kernel = ast.literal_eval(kernel_value_str)
                 if isinstance(gaussian_kernel, list):
                     input_rank = estimated_flux.ndim
                     if len(gaussian_kernel) == input_rank:
-                        print(f"Using Gaussian Kernel: {gaussian_kernel}")
+                        print(f"Using Gaussian Kernel for Heat Flux: {gaussian_kernel}")
                         estimated_flux = gaussian_filter(estimated_flux, sigma=gaussian_kernel)
                     else:
                         print(f"Error: Gaussian kernel length must match input's number of dimensions ({input_rank}).")
@@ -355,7 +373,8 @@ def process_directory_and_plot(source_dir, dest_dir, element_width, element_heig
             except (ValueError, SyntaxError):
                 print("Error: Invalid Gaussian kernel value. Please enter a valid list, e.g., [7,7,15]")
         else:
-            print("Gaussian smoothing is disabled.")
+            print("Heat flux Gaussian smoothing is disabled.")
+        
         # Export results for the current batch
         for i in tqdm(range(estimated_flux.shape[2]), desc='Exporting Results: '):
             # Updated line: Format the frame index with 6 digits padding
@@ -692,14 +711,22 @@ def setup_second_tab(parent):
             Tamb_array_button.config(state=tk.NORMAL)
         else:
             Tamb_array_button.config(state=tk.DISABLED)
-    def toggle_G_smoothing():
+    def toggle_G_smoothing_hf():
         if global_state['Heat_Flux_Gaussian_Smoothing'].get() == 1:
-            G_kernel_entry.config(state=tk.NORMAL)
-            if not G_kernel_entry.get():
-                global_state['G_kernel_matrix_value'].set("[7,7,15]")
+            G_kernel_entry_hf.config(state=tk.NORMAL)
+            if not G_kernel_entry_hf.get():
+                global_state['G_kernel_matrix_value_hf'].set("[7,7,15]")
         else:
-            G_kernel_entry.config(state=tk.DISABLED)
-            global_state['G_kernel_matrix_value'].set("")
+            G_kernel_entry_hf.config(state=tk.DISABLED)
+            global_state['G_kernel_matrix_value_hf'].set("")
+    def toggle_G_smoothing_T():
+        if global_state['T_Gaussian_Smoothing'].get() == 1:
+            G_kernel_entry_T.config(state=tk.NORMAL)
+            if not G_kernel_entry_T.get():
+                global_state['G_kernel_matrix_value_T'].set("[7,7,15]")
+        else:
+            G_kernel_entry_T.config(state=tk.DISABLED)
+            global_state['G_kernel_matrix_value_T'].set("")
 
     global_state['time_array_checkbox_var'] = tk.IntVar()
     Label(parent, text='Enable Time Array File').grid(row = row, column = 0, sticky = W, pady = 2)
@@ -732,15 +759,27 @@ def setup_second_tab(parent):
     row += 1
     #######################################################
     global_state['Heat_Flux_Gaussian_Smoothing'] = tk.IntVar()
-    Label(parent, text='Gaussian Kernel [x,y,t]').grid(row=row, column=0, sticky=W, pady=2)
+    Label(parent, text='Heat Flux Gaussian Kernel [x,y,t]').grid(row=row, column=0, sticky=W, pady=2)
 
-    G_smoothing = tk.Checkbutton(parent, text="", variable=global_state['Heat_Flux_Gaussian_Smoothing'], command=toggle_G_smoothing)
+    G_smoothing = tk.Checkbutton(parent, text="", variable=global_state['Heat_Flux_Gaussian_Smoothing'], command=toggle_G_smoothing_hf)
     G_smoothing.grid(row=row, column=0, sticky=E, pady=2)
 
-    global_state['G_kernel_matrix_value'] = tk.StringVar()
-    G_kernel_entry = Entry(parent, textvariable=global_state['G_kernel_matrix_value'], state=tk.DISABLED)
-    G_kernel_entry.grid(row=row, column=1, sticky=W, pady=2)
-    toggle_G_smoothing()
+    global_state['G_kernel_matrix_value_hf'] = tk.StringVar()
+    G_kernel_entry_hf = Entry(parent, textvariable=global_state['G_kernel_matrix_value_hf'], state=tk.DISABLED)
+    G_kernel_entry_hf.grid(row=row, column=1, sticky=W, pady=2)
+    toggle_G_smoothing_hf()
+    row += 1
+    #######################################################
+    global_state['T_Gaussian_Smoothing'] = tk.IntVar()
+    Label(parent, text='Temperature Gaussian Kernel [x,y,t]').grid(row=row, column=0, sticky=W, pady=2)
+
+    G_smoothing = tk.Checkbutton(parent, text="", variable=global_state['T_Gaussian_Smoothing'], command=toggle_G_smoothing_T)
+    G_smoothing.grid(row=row, column=0, sticky=E, pady=2)
+
+    global_state['G_kernel_matrix_value_T'] = tk.StringVar()
+    G_kernel_entry_T = Entry(parent, textvariable=global_state['G_kernel_matrix_value_T'], state=tk.DISABLED)
+    G_kernel_entry_T.grid(row=row, column=1, sticky=W, pady=2)
+    toggle_G_smoothing_T()
     row += 1
     #######################################################
     Label(parent, text='Apply Inverse Model').grid(row = row, column = 0, sticky = W, pady = 2)
