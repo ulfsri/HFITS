@@ -35,7 +35,8 @@ DEFAULTS = {
     "time derivative method" : "numpy gradient"
 }
 STEFAN_BOLTZMANN_CONSTANT = 5.67e-8
-global_state = {"source folder": "", "dest folder": "", "time array": "", "constants": DEFAULTS.copy(), "convection method": "constants", "second order grad": False}
+global_state = {"source folder": "", "dest folder": "", "time array": "",\
+     "constants": DEFAULTS.copy(), "convection method": "constants", "second order grad": False}
 
 # Utility Functions
 def nu_gas(T_g):
@@ -93,7 +94,7 @@ def rho_metal(T_g):
     return rho_metal
 
 def Grashof(dT_w, T_film, T_amb):
-    L = DEFAULTS['length scale']
+    L = float(global_state["constants"]['length scale'].get())
     return 9.81*(1/(T_film))*abs(dT_w)*L**3 /(nu_gas(T_film - 273.15))**2
 
 def natural_conv_correlation(Gr):
@@ -117,10 +118,10 @@ def calculate_gradients(T_values_2d, i, j, element_width, element_height, use_hi
             grad_T[1] += (-T_values_2d[i, j] + T_values_2d[i, j-1]) * element_width / element_height
         if j < cols - 1:
             grad_T[1] += (T_values_2d[i, j+1] - T_values_2d[i, j]) * element_width / element_height
-    return grad_T * k_metal(T_values_2d[i, j]) * DEFAULTS['wall thickness']
+    return grad_T * k_metal(T_values_2d[i, j]) * float(global_state["constants"]['wall thickness'].get())
 
 def inverse_heat_transfer(time_series_data, element_width, element_height, time_step, convection_method):
-
+    global global_state
     if global_state["temperature_unit_var"].get() == "Celsius":
         time_series_data += 273.15
         print('Temperature unit will be converted from Celsius to Kelvin.')
@@ -137,15 +138,16 @@ def inverse_heat_transfer(time_series_data, element_width, element_height, time_
     temp_grad_time = np.zeros(time_series_data.shape)
 
     if global_state['Tf_array_checkbox_var'].get() == 1:
-        T_film = Tfilm_interp( float(global_state["constants"]["surface width"].get()) , float(global_state["constants"]["surface width"].get()) , time_series_data.shape[-1])
+        T_film = Tfilm_interp( float(global_state["constants"]["surface width"].get()) ,\
+             float(global_state["constants"]["surface width"].get()) , time_series_data.shape[-1])
     else:
         
-        T_film = DEFAULTS['initial temperature'] * np.ones((rows,cols,num_time_steps))
+        T_film = float(global_state["constants"]['initial temperature'].get()) * np.ones((rows,cols,num_time_steps))
         
     if global_state['Tamb_array_checkbox_var'].get() == 1:
         Tamb = T0_intrp()
     else:
-        Tamb = DEFAULTS['initial temperature'] * np.ones(num_time_steps)
+        Tamb = float(global_state["constants"]['initial temperature'].get()) * np.ones(num_time_steps)
 
     if dt_method == 'FDM':
         fdm_solver = FDM()
@@ -166,26 +168,32 @@ def inverse_heat_transfer(time_series_data, element_width, element_height, time_
                 if convection_method == 'natural convection correlation':
                     #### exposed side
                     Grashov = Grashof (T - Tamb[k] , T_film[i, j, k] , Tamb[k])
-                    DEFAULTS['convective hc exposed'] = natural_conv_correlation(Grashov) * k_gas((T + Tamb[k])/2) / DEFAULTS['length scale']
+                    global_state["constants"]["convective hc exposed"] = natural_conv_correlation(Grashov) * \
+                                            k_gas((T + Tamb[k])/2) / float(global_state["constants"]["length scale"].get())
                     #### unexposed side
-                    Grashov = Grashof (T - DEFAULTS['initial temperature']  ,\
-                                        (T + DEFAULTS['initial temperature'] )/2 ,\
-                                                DEFAULTS['initial temperature'] )
-                    DEFAULTS['convective hc unexposed'] = natural_conv_correlation(Grashov) * k_gas((T + DEFAULTS['initial temperature'])/2) /  DEFAULTS['length scale']
+                    Grashov = Grashof (T - float(global_state["constants"]['initial temperature'].get())  ,\
+                                        (T + float(global_state["constants"]['initial temperature'].get()) )/2 ,\
+                                                float(global_state["constants"]['initial temperature'].get()) )
+                    global_state["constants"]["convective hc unexposed"] = natural_conv_correlation(Grashov) * \
+                        k_gas((T + float(global_state["constants"]['initial temperature'].get()))/2) /  \
+                                                        float(global_state["constants"]["length scale"].get())
                 
-                hfc[i,j,k] = DEFAULTS['convective hc exposed']
+                hfc[i,j,k] = float(global_state["constants"]['convective hc exposed'].get())
 
-                q_conv = (DEFAULTS['convective hc exposed'] + DEFAULTS['convective hc unexposed'])  * (T - Tamb[k])
-                q_rad = 2 * DEFAULTS['surface emissivity'] * STEFAN_BOLTZMANN_CONSTANT  * (T**4 - 0.5*Tamb[k]**4)
-                q_storage = cp_metal(T) * rho_metal(T)  * DEFAULTS['wall thickness'] * temp_grad_time[i, j, k]
-                estimated_flux[i, j, k] = (q_storage + q_conv + q_rad - q_cond) / (1000 * DEFAULTS['surface emissivity'])
+                q_conv = (float(global_state["constants"]['convective hc exposed'].get()) +\
+                         float(global_state["constants"]['convective hc unexposed'].get()))  * (T - Tamb[k])
+                q_rad = 2 * float(global_state["constants"]['surface emissivity'].get()) * STEFAN_BOLTZMANN_CONSTANT  * (T**4 - 0.5*Tamb[k]**4)
+                q_storage = cp_metal(T) * rho_metal(T)  * float(global_state["constants"]['wall thickness'].get()) * temp_grad_time[i, j, k]
+                estimated_flux[i, j, k] = (q_storage + q_conv + q_rad - q_cond) / (1000 * float(global_state["constants"]['surface emissivity'].get()))
     return estimated_flux , hfc , T_film , Tamb
 
 def select_source_folder():
     global global_state
     global_state["source_folder"] = filedialog.askdirectory()
     if global_state["source_folder"]:
-        total_size_mb = sum(os.path.getsize(os.path.join(global_state["source_folder"], f)) for f in os.listdir(global_state["source_folder"]) if os.path.isfile(os.path.join(global_state["source_folder"], f))) / (1024**2)
+        total_size_mb = sum(os.path.getsize(os.path.join(global_state["source_folder"], f))\
+             for f in os.listdir(global_state["source_folder"]) if os.path.isfile(os.path.join(global_state["source_folder"], f))) / (1024**2)
+
         num_files = len(glob.glob(os.path.join(global_state["source_folder"], '*.csv')))
         proceed = messagebox.askyesno("Proceed", f"Total size of files: {total_size_mb:.2f} MB\nDo you want to proceed?")
         print('Source Folder Selected: '+ global_state["source_folder"])
@@ -328,7 +336,6 @@ def process_directory_and_plot(source_dir, dest_dir, element_width, element_heig
             time_series_data = combined_data#[:, :, -batch_files:]
 
         estimated_flux, hfc, Tf, T_inf = inverse_heat_transfer(time_series_data, element_width, element_height, time_step, convection_method)
-
         sigma_values = [7, 7, 15]
 
         # Apply Gaussian Filter with different sigmas for each axis
@@ -484,7 +491,7 @@ def export_pngs(root, batch_size):
             axs[1].set_yticks(np.linspace(ymin,ymax,labels_y.shape[0]), labels_height, rotation='horizontal')
 
             plt.tight_layout()
-            fig.savefig(os.path.join(output_dir, f"batch_{batch_index}_frame_{frame_index:06d}.svg") , dpi = 150, bbox_inches='tight')
+            fig.savefig(os.path.join(output_dir, f"batch_{batch_index}_frame_{frame_index:06d}.png") , dpi = 300, bbox_inches='tight')
             pbar.update(1)
 
         plt.close(fig)
