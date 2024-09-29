@@ -41,9 +41,11 @@ global_state = {"source folder": "", "dest folder": "", "time array": "",\
 
 # Utility Functions
 def nu_gas(T_g):
+    T_g -= 273.15
     return (0.0000627695*T_g**2 + 0.0969429527*T_g + 13.152284446)*10**(-6)
 
 def k_gas(T_g):
+    T_g -= 273.15
     return (0.000000013395106*T_g**2 + 0.000069426548*T_g + 0.0246228047)
 
 def k_metal(T_g):
@@ -96,7 +98,7 @@ def rho_metal(T_g):
 
 def Grashof(dT_w, T_film, T_amb):
     L = float(global_state["constants"]['length scale'].get())
-    return 9.81*(1/(T_film))*abs(dT_w)*L**3 /(nu_gas(T_film - 273.15))**2
+    return 9.81*(1/(T_film))*abs(dT_w)*L**3 /(nu_gas(T_film))**2
 
 def natural_conv_correlation(Gr):
     Pr = 0.701
@@ -131,6 +133,7 @@ def inverse_heat_transfer(time_series_data, element_width, element_height, time_
     rows, cols, num_time_steps = time_series_data.shape
     estimated_flux = np.zeros(time_series_data.shape)
     hfc = np.zeros(time_series_data.shape)
+    # hcc = np.zeros(time_series_data.shape)
 
     area = element_height * element_width
 
@@ -142,7 +145,6 @@ def inverse_heat_transfer(time_series_data, element_width, element_height, time_
         T_film = Tfilm_interp( float(global_state["constants"]["surface width"].get()) ,\
              float(global_state["constants"]["surface width"].get()) , time_series_data.shape[-1])
     else:
-        
         T_film = float(global_state["constants"]['initial temperature'].get()) * np.ones((rows,cols,num_time_steps))
         
     if global_state['Tamb_array_checkbox_var'].get() == 1:
@@ -168,25 +170,21 @@ def inverse_heat_transfer(time_series_data, element_width, element_height, time_
                 T = time_series_data[i, j, k]
                 if convection_method == 'natural convection correlation':
                     #### exposed side
-                    Grashov = Grashof (T - Tamb[k] , T_film[i, j, k] , Tamb[k])
-                    global_state["constants"]["convective hc exposed"] = natural_conv_correlation(Grashov) * \
-                                            k_gas((T + Tamb[k])/2) / float(global_state["constants"]["length scale"].get())
+                    Grashov = Grashof (T - Tamb[k] , (T + T_film[i, j, k])/2 , Tamb[k])
+                    hfc[i,j,k] = natural_conv_correlation(Grashov) * k_gas((T + Tamb[k])/2) / float(global_state["constants"]["length scale"].get())
                     #### unexposed side
-                    Grashov = Grashof (T - float(global_state["constants"]['initial temperature'].get())  ,\
-                                        (T + float(global_state["constants"]['initial temperature'].get()) )/2 ,\
-                                                float(global_state["constants"]['initial temperature'].get()) )
-                    global_state["constants"]["convective hc unexposed"] = natural_conv_correlation(Grashov) * \
-                        k_gas((T + float(global_state["constants"]['initial temperature'].get()))/2) /  \
-                                                        float(global_state["constants"]["length scale"].get())
-                
-                hfc[i,j,k] = float(global_state["constants"]['convective hc exposed'].get())
+                    Grashov = Grashof (T - Tamb[k]  , (T + Tamb[k])/2 , Tamb[k])
+                    hcc = natural_conv_correlation(Grashov) * k_gas((T + Tamb[k])/2) / float(global_state["constants"]["length scale"].get())                                   
+                else:
+                    hfc[i,j,k] = float(global_state["constants"]['convective hc exposed'].get())
+                    hcc = float(global_state["constants"]['convective hc unexposed'].get())
+                    
 
-                q_conv = (float(global_state["constants"]['convective hc exposed'].get()) +\
-                         float(global_state["constants"]['convective hc unexposed'].get()))  * (T - Tamb[k])
+                q_conv = (hfc[i,j,k] + hcc)  * (T - Tamb[k])
                 q_rad = 2 * float(global_state["constants"]['surface emissivity'].get()) * STEFAN_BOLTZMANN_CONSTANT  * (T**4 - 0.5*Tamb[k]**4)
                 q_storage = cp_metal(T) * rho_metal(T)  * float(global_state["constants"]['wall thickness'].get()) * temp_grad_time[i, j, k]
                 estimated_flux[i, j, k] = (q_storage + q_conv + q_rad - q_cond) / (1000 * float(global_state["constants"]['surface emissivity'].get()))
-    return estimated_flux , hfc , T_film , Tamb
+    return estimated_flux , hfc ,  T_film , Tamb
 
 def select_source_folder():
     global global_state
@@ -275,6 +273,7 @@ def process_directory_and_plot(source_dir, dest_dir, element_width, element_heig
         h5py_Tf = h5py.File(os.path.join(dest_dir, "Film_Temperature.h5"), 'w')
         h5py_T0 = h5py.File(os.path.join(dest_dir, "Ambient_Temperature.h5"), 'w')
         h5py_hfc = h5py.File(os.path.join(dest_dir, "Exposed_Side_CHTC.h5"), 'w')
+        # h5py_hcc = h5py.File(os.path.join(dest_dir, "Unexposed_Side_CHTC.h5"), 'w')
 
     if input_file_type == "h5py":
         h5py_file_paths = glob.glob(os.path.join(source_dir, '*.h5'))
@@ -389,7 +388,7 @@ def process_directory_and_plot(source_dir, dest_dir, element_width, element_heig
             dataset_name_Tf = f'film_temperature_batch{batch_idx}_frame{padded_index}'
             dataset_name_T0 = f'Ambient_temperature_batch{batch_idx}_frame{padded_index}'
             dataset_name_hfc = f'exposed_side_CHTC_batch{batch_idx}_frame{padded_index}'
-
+            # dataset_name_hcc = f'unexposed_side_CHTC_batch{batch_idx}_frame{padded_index}'
             if output_file_type == "csv":
                 output_file_path = os.path.join(dest_dir, dataset_name + '.csv')
                 pd.DataFrame(estimated_flux[:, :, i]).to_csv(output_file_path, header=False, index=False, float_format='%.15f')
@@ -398,6 +397,8 @@ def process_directory_and_plot(source_dir, dest_dir, element_width, element_heig
                     del h5py_qr[dataset_name_qr]
                 if dataset_name_hfc in h5py_hfc:
                     del h5py_hfc[dataset_name_hfc]
+                # if dataset_name_hcc in h5py_hcc:
+                #     del h5py_hcc[dataset_name_hcc]
                 if dataset_name_Tf in h5py_Tf:
                     del h5py_Ts[dataset_name_Tf]
                 if dataset_name_Ts in h5py_Ts:
@@ -407,6 +408,7 @@ def process_directory_and_plot(source_dir, dest_dir, element_width, element_heig
 
                 h5py_qr.create_dataset(dataset_name_qr, data=estimated_flux[:, :, i])
                 h5py_hfc.create_dataset(dataset_name_hfc, data=hfc[:, :, i])
+                # h5py_hcc.create_dataset(dataset_name_hcc, data=hcc[:, :, i])
                 h5py_Ts.create_dataset(dataset_name_Ts, data=time_series_data[:, :, i])
                 h5py_Tf.create_dataset(dataset_name_Tf, data=Tf[:, :, i])
                 h5py_T0.create_dataset(dataset_name_T0, data=T_inf[i])
@@ -416,6 +418,7 @@ def process_directory_and_plot(source_dir, dest_dir, element_width, element_heig
     if output_file_type == "h5py":
         h5py_qr.close()
         h5py_hfc.close()
+        # h5py_hcc.close()
         h5py_Ts.close()
         h5py_Tf.close()
         h5py_T0.close()
