@@ -357,7 +357,6 @@ def process_directory_and_plot(source_dir, dest_dir, element_width, element_heig
 
         estimated_flux, hfc, Tf, T_inf = inverse_heat_transfer(time_series_data, element_width, element_height, time_step, convection_method)
 
-        # Gaussian filtering if enabled
         if global_state['Heat_Flux_Smoothing'].get() == 1:
             try:
                 kernel_value_str = global_state['kernel_matrix_value_hf'].get()
@@ -767,7 +766,7 @@ def setup_second_tab(parent):
     row += 1
     #######################################################
     global_state['Heat_Flux_Smoothing'] = tk.IntVar()
-    Label(parent, text='Heat Flux Gaussian Kernel [x,y,t]').grid(row=row, column=0, sticky=W, pady=2)
+    Label(parent, text='Heat Flux Smoothinh Kernel [x,y,t]').grid(row=row, column=0, sticky=W, pady=2)
 
     G_smoothing = tk.Checkbutton(parent, text="", variable=global_state['Heat_Flux_Smoothing'], command=toggle_G_smoothing_hf)
     G_smoothing.grid(row=row, column=0, sticky=E, pady=2)
@@ -779,7 +778,7 @@ def setup_second_tab(parent):
     row += 1
     #######################################################
     global_state['T_Smoothing'] = tk.IntVar()
-    Label(parent, text='Temperature Gaussian Kernel [x,y,t]').grid(row=row, column=0, sticky=W, pady=2)
+    Label(parent, text='Temperature Smoothing Kernel [x,y,t]').grid(row=row, column=0, sticky=W, pady=2)
 
     G_smoothing = tk.Checkbutton(parent, text="", variable=global_state['T_Smoothing'], command=toggle_G_smoothing_T)
     G_smoothing.grid(row=row, column=0, sticky=E, pady=2)
