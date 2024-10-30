@@ -14,5 +14,5 @@ Please refer to the following resources for additional information and examples 
   - [Report Download (PDF)](https://d1gi3fvbl0xj2a.cloudfront.net/2024-07/Measurement%20of%20Heat%20Transfer%20and%20Fire%20Damage%20Patterns%20on%20Walls%20for%20Fire%20Model%20Validation%20240709_0.pdf)
 - N. Sauer (2024) **FSRI Experimental Investigation of EV Fires**, Conference Presentation, *SFPE Engineering Solutions Symposium - Progress with Li-Ion Battery Fire Safety: Engineering Solutions to Mobility and Storage Hazards*, Phoenix, AZ.
   - [Conference Information](https://www.sfpe.org/events-education/liveeducation/in-personeducation/liionsymposium)
-- P. Dehghani (2024) **On Modeling of EV Fire Heat Exposure to the Immediate Surrounding Using Inverse Heat Transfer Analysis**, Conference Presentation, *SFPE 2024 Annual Conference and Expo*, Louisville, KY.
+- P. Dehghani, M. DiDomizio, A. Barowy, and N. Sauer (2024) **Measuring Heat Exposure to the Immediate Surroundings of an Electric Vehicle Fire**, Conference Presentation, *SFPE 2024 Annual Conference and Expo*, Louisville, KY.
   - [Conference Information](https://www.sfpe.org/annual24/home)
