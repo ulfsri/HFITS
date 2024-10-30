@@ -38,7 +38,6 @@ DEFAULTS = {
 STEFAN_BOLTZMANN_CONSTANT = 5.67e-8
 global_state = {"source folder": "", "dest folder": "", "time array": "",\
      "constants": DEFAULTS.copy(), "convection method": "constants", "second order grad": False}
-
 # Utility Functions
 def nu_gas(T_g):
     T_g -= 273.15
@@ -134,19 +133,14 @@ def inverse_heat_transfer(time_series_data, element_width, element_height, time_
     estimated_flux = np.zeros(time_series_data.shape)
     hfc = np.zeros(time_series_data.shape)
     # hcc = np.zeros(time_series_data.shape)
-
     area = element_height * element_width
-
     dt_method = global_state["time derivative method"].get()
-
     temp_grad_time = np.zeros(time_series_data.shape)
-
     if global_state['Tf_array_checkbox_var'].get() == 1:
         T_film = Tfilm_interp( float(global_state["constants"]["surface width"].get()) ,\
              float(global_state["constants"]["surface width"].get()) , time_series_data.shape[-1])
     else:
         T_film = float(global_state["constants"]['initial temperature'].get()) * np.ones((rows,cols,num_time_steps))
-        
     if global_state['Tamb_array_checkbox_var'].get() == 1:
         Tamb = T0_intrp()
     else:
@@ -168,6 +162,7 @@ def inverse_heat_transfer(time_series_data, element_width, element_height, time_
                 grad_T = calculate_gradients(np.squeeze(time_series_data[:, :, k]), i, j, element_width, element_height)
                 q_cond = np.sum(grad_T)/area
                 T = time_series_data[i, j, k]
+
                 if convection_method == 'natural convection correlation':
                     #### exposed side
                     Grashov = Grashof (T - Tamb[k] , (T + T_film[i, j, k])/2 , Tamb[k])
@@ -179,7 +174,6 @@ def inverse_heat_transfer(time_series_data, element_width, element_height, time_
                     hfc[i,j,k] = float(global_state["constants"]['convective hc exposed'].get())
                     hcc = float(global_state["constants"]['convective hc unexposed'].get())
                     
-
                 q_conv = (hfc[i,j,k] + hcc)  * (T - Tamb[k])
                 q_rad = 2 * float(global_state["constants"]['surface emissivity'].get()) * STEFAN_BOLTZMANN_CONSTANT  * (T**4 - 0.5*Tamb[k]**4)
                 q_storage = cp_metal(T) * rho_metal(T)  * float(global_state["constants"]['wall thickness'].get()) * temp_grad_time[i, j, k]
@@ -364,7 +358,7 @@ def process_directory_and_plot(source_dir, dest_dir, element_width, element_heig
                 if isinstance(q_kernel, list):
                     input_rank = estimated_flux.ndim
                     if len(q_kernel) == input_rank:
-                        print(f"Using Kernel for Heat Flux: {q_kernel}")
+                        print(f"Using Kernel for Heat Flux Smoothing: {q_kernel}")
                         # estimated_flux = gaussian_filter(estimated_flux, sigma=q_kernel)
                         estimated_flux = savgol_filter(estimated_flux, q_kernel[0] , polyorder=3, deriv=0, delta=1.0, axis=0, mode='interp', cval=0.0)
                         estimated_flux = savgol_filter(estimated_flux, q_kernel[1] , polyorder=3, deriv=0, delta=1.0, axis=0, mode='interp', cval=0.0)
@@ -766,7 +760,7 @@ def setup_second_tab(parent):
     row += 1
     #######################################################
     global_state['Heat_Flux_Smoothing'] = tk.IntVar()
-    Label(parent, text='Heat Flux Smoothinh Kernel [x,y,t]').grid(row=row, column=0, sticky=W, pady=2)
+    Label(parent, text='Heat Flux Smoothing Kernel [x,y,t]').grid(row=row, column=0, sticky=W, pady=2)
 
     G_smoothing = tk.Checkbutton(parent, text="", variable=global_state['Heat_Flux_Smoothing'], command=toggle_G_smoothing_hf)
     G_smoothing.grid(row=row, column=0, sticky=E, pady=2)
