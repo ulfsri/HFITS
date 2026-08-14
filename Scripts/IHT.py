@@ -604,7 +604,7 @@ def create_video(source_folder, dest_folder, source_file_type, dest_file_type,gl
             ######## update the manual progress bar here
             pbar.update(1)
 
-        ani = animation.FuncAnimation(fig, animate, frames=range(len(source_data_frames)), repeat=False, interval=1000 * Time_Step_Size_s, blit = True)
+        ani = animation.FuncAnimation(fig, animate, frames=range(len(source_data_frames)), repeat=False, interval=1000 * Time_Step_Size_s, blit = False)
         
         temp_video_path = os.path.join(dest_folder, f'temp_video_batch_{batch_index}.mp4')
         ani.save(temp_video_path, writer='ffmpeg', fps=1/Time_Step_Size_s)
