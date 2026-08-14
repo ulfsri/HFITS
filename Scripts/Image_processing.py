@@ -52,12 +52,16 @@ def define_destination(points):
     bottom_left = (min(x_coords), max(y_coords))
     return [top_left, top_right, bottom_right, bottom_left]
 
-def on_click(event, points, ax):
+def on_click(event, points, ax, confirm, fig):
     if event.inaxes is not None:
         x, y = int(event.xdata), int(event.ydata)
         points.append((x, y))
         ax.plot(x, y, 'ro')  # mark the point
         plt.draw()
+        if len(points) == 4:
+            # got the 4 points, confirm and move on to the next selection window
+            confirm[0] = True
+            plt.close(fig)
 
 def on_key(event, points, confirm, fig):
     if event.key == 'enter':
@@ -73,7 +77,7 @@ def display_and_select_points(image_data, title="Select Points"):
     fig, ax = plt.subplots()
     ax.set_title(title)
     cp = ax.contourf(image_data,100)
-    fig.canvas.mpl_connect('button_press_event', lambda event: on_click(event, points, ax))
+    fig.canvas.mpl_connect('button_press_event', lambda event: on_click(event, points, ax, confirm, fig))
     fig.canvas.mpl_connect('key_press_event', lambda event: on_key(event, points, confirm, fig))
     plt.show()
     plt.close(fig)
@@ -160,7 +164,7 @@ class IPA:
         #########################
         tk.Label(parent, text="Output Type:").grid(row = self.row, column = 0, sticky = "W", pady = 2)
         save_options = ["csv", "h5py"]
-        self.option_menu = tk.OptionMenu(parent, self.save_option, *save_options, command=self.on_format_change)
+        self.option_menu = tk.OptionMenu(parent, self.save_option, *save_options)
         self.option_menu.grid(row = self.row, column = 2, sticky = "W", pady = 2)
         self.row += 1
         #########################
@@ -233,17 +237,6 @@ class IPA:
             save_image_to_csv(cropped_image, original_filename, self.dest_folder, self.padded_names_dict)
         elif self.save_option.get() == "h5py":
             self.save_image_to_h5py(cropped_image, os.path.basename(file_path), self.dest_folder, self.padded_names_dict)
-
-    def on_format_change(self, value):
-        self.update_h5py_size_entry_state()
-
-    def update_h5py_size_entry_state(self):
-        if self.save_option.get() == "h5py":
-            self.h5py_size_label.config(state="normal")
-            self.h5py_files_entry.config(state="normal")
-        else:
-            self.h5py_size_label.config(state="disabled")
-            self.h5py_files_entry.config(state="disabled")
 
     def select_source_folder(self):
         self.source_folder = filedialog.askdirectory()

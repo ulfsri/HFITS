@@ -4,6 +4,18 @@ Developed by research engineers at the [Fire Safety Research Institute](https://
 
 HFITS consists of two main components: pre-processing of infrared thermograms (obtained from heat transfer experiments), and inverse heat transfer analysis (to deduce heat flux over the planar surface in those experiments). The software offers comprehensive functionalities, including support for custom thermogram formats, metadata handling, a graphical interface for selection of regions of interest, the ability to import additional temperature measurements to enhance convective heat transfer estimates, and the exporting of both computed field data and contour videos. Please refer to the software [MANUAL](https://github.com/ulfsri/HFITS/blob/main/MANUAL.pdf) for additional information.
 
+## Note on file names for PNG and video export
+
+The export functions on the 'Inverse Heat Transfer' tab look for fixed file names, and will not find files under any other name:
+
+- The source folder must contain `processed_temperature_array.h5`. This file is created by the 'Image Processing' tab. If the temperature data comes from another source (e.g., a downloaded dataset), the file must be renamed to `processed_temperature_array.h5` before exporting.
+- The destination folder must contain `Incident_Radiative_HF.h5`. This file is created by 'Apply Inverse Model', so 'Export PNG' and 'Export Video' only work after that step has been completed.
+- The source and destination folders should be kept separate (e.g., `T_proc` and `Q_proc`, as described in the [MANUAL](https://github.com/ulfsri/HFITS/blob/main/MANUAL.pdf)).
+- A renamed copy of `Surface_Temperature.h5` should not be used as the temperature input for plotting: it stores temperatures in Kelvin, while the plots use a Celsius scale (0 to 'maximum temperature'), so the plots will look wrong (near-uniform color, hottest regions blank). The 'Image Processing' output should be used instead, which is in the same unit as the input data.
+- The CSV thermogram files are not required for PNG/video export when the file types are set to h5py — only the two `.h5` files above are needed.
+
+###
+
 This software has been made available to the community under the GPL-3.0 license. It is under active development, and users are encouraged to contact the software developers with questions and feature requests.
 
 Please refer to the following resources for additional information and examples of the application of HFITS:
